@@ -1,12 +1,30 @@
-from .fileformat_pb2 import Body
-
+import struct
 from shapely.wkb import loads
+
+from .fileformat_pb2 import Body
 
 
 BYTEORDER = 'little'
 
 
+class Feature(object):
+    __slots__ = 'geometry', 'properties'
+
+    def __init__(self, geometry, properties):
+        self.geometry = geometry
+        self.properties = properties
+
+    def __repr__(self):
+        return '{}: ({})'.format(self.geometry.geom_type, self.properties.__repr__())
+
+
 class SpatenFile(object):
+    vt = {
+        0: lambda buf: buf.decode('utf-8'),
+        1: lambda buf: int.from_bytes(buf, 'little'),
+        2: lambda buf: struct.unpack('d', buf)[0]
+    }
+
     def __init__(self, f):
         self.f = f
 
@@ -20,21 +38,27 @@ class SpatenFile(object):
         if hasattr(self.r, 'close'):
             self.r.close()
 
-    def read(self, size):
+    def parse_tags(self, tags) -> dict:
+        props = {}
+        for tag in tags:
+            props[tag.key] = self.vt[tag.type](tag.value)
+        return props
+
+    def read(self, size: int):
         """Reads the specified number of bytes and checks if EOF has occured"""
         buf = self.r.read(size)
         if len(buf) != size:
             raise EOFError
         return buf
 
-    def read_int(self, size):
+    def read_int(self, size: int):
         return int.from_bytes(self.read(size), BYTEORDER)
 
     def read_header(self):
         cookie = self.r.read(4)
         if cookie != b'SPAT':
             raise ValueError('Invalid header')
-        version = int.from_bytes(self.r.read(4), BYTEORDER)
+        version = self.read_int(4)
         if version != 0:
             raise ValueError('The library only supports Spaten version 0')
         return version
@@ -52,9 +76,16 @@ class SpatenFile(object):
             raise AttributeError('non-protobuf Spaten files are not supported')
 
         bodybuf = self.read(body_len)
-        body = Body()
-        body.ParseFromString(bodybuf)
-        return body
+        block = Body()
+        block.ParseFromString(bodybuf)
+
+        features = []
+        for feature in block.feature:
+            features.append(Feature(
+                geometry=loads(feature.geom),
+                properties=self.parse_tags(feature.tags)
+            ))
+        return features
 
     def __iter__(self):
         return self
