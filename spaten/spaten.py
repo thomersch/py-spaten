@@ -16,7 +16,12 @@ class SpatenFile(object):
         self.read_header()
         return self
 
+    def __exit__(self, *args, **kwargs):
+        if hasattr(self.r, 'close'):
+            self.r.close()
+
     def read(self, size):
+        """Reads the specified number of bytes and checks if EOF has occured"""
         buf = self.r.read(size)
         if len(buf) != size:
             raise EOFError
@@ -50,10 +55,6 @@ class SpatenFile(object):
         body = Body()
         body.ParseFromString(bodybuf)
         return body
-
-    def __exit__(self, *args, **kwargs):
-        if hasattr(self.r, 'close'):
-            self.r.close()
 
     def __iter__(self):
         return self
