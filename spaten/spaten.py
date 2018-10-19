@@ -18,7 +18,7 @@ class Feature(object):
         return '{}: ({})'.format(self.geometry.geom_type, self.properties.__repr__())
 
 
-class SpatenFile(object):
+class File(object):
     vt = {
         0: lambda buf: buf.decode('utf-8'),
         1: lambda buf: int.from_bytes(buf, 'little'),
@@ -95,7 +95,3 @@ class SpatenFile(object):
             return self.read_block()
         except EOFError:
             raise StopIteration
-
-
-def read(f):
-    return SpatenFile(f)
