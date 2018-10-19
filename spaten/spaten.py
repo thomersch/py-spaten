@@ -1,4 +1,5 @@
 import struct
+
 from shapely.wkb import loads
 
 from .fileformat_pb2 import Body
@@ -88,10 +89,13 @@ class File(object):
         return features
 
     def __iter__(self):
+        self._rd_buf = []  # type: [Feature]
         return self
 
-    def __next__(self):
+    def __next__(self) -> Feature:
         try:
-            return self.read_block()
+            if len(self._rd_buf) == 0:
+                self._rd_buf = self.read_block()
+            return self._rd_buf.pop(0)
         except EOFError:
             raise StopIteration

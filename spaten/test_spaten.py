@@ -1,7 +1,7 @@
-from spaten.spaten import read
+from spaten import Feature, File
 
 
 def test_parse():
-    with read('spaten/testfiles/point2.spaten') as f:
+    with File('spaten/testfiles/polygon.spaten') as f:
         for feature in f:
-            print(feature)
+            assert isinstance(feature, Feature)

@@ -1,3 +1,3 @@
-from .spaten import File
+from .spaten import Feature, File
 
-__all__ = ('File', )
+__all__ = ('Feature', 'File')
