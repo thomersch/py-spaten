@@ -1,11 +1,13 @@
 import struct
+from typing import List
 
-from shapely.wkb import loads
+from shapely.wkb import dumps, loads
 
-from .fileformat_pb2 import Body
+from .fileformat_pb2 import Body, Feature as SFeature, Tag
 
 
 BYTEORDER = 'little'
+COOKIE = b'SPAT'
 
 
 class Feature(object):
@@ -20,13 +22,20 @@ class Feature(object):
 
 
 class File(object):
-    vt = {
-        0: lambda buf: buf.decode('utf-8'),
-        1: lambda buf: int.from_bytes(buf, 'little'),
-        2: lambda buf: struct.unpack('d', buf)[0]
+    type_deserializers = {
+        Tag.STRING: lambda buf: buf.decode('utf-8'),
+        Tag.INT: lambda buf: int.from_bytes(buf, 'little'),
+        Tag.DOUBLE: lambda buf: struct.unpack('d', buf)[0]
+    }
+    type_serializers = {
+        str: lambda v: (v.encode('utf-8'), Tag.STRING),
+        int: lambda v: (v.to_bytes(8, BYTEORDER), Tag.INT),
+        float: lambda v: (struct.pack('d', v), Tag.DOUBLE)
     }
 
     def __init__(self, f):
+        """Initialize a Spaten stream. If f is a str, it will be treated as a file
+        path, otherwise it will be handled as a stream."""
         self.f = f
 
     def __enter__(self):
@@ -36,14 +45,24 @@ class File(object):
         return self
 
     def __exit__(self, *args, **kwargs):
+        self.close()
+
+    def close(self):
         if hasattr(self.r, 'close'):
             self.r.close()
 
     def parse_tags(self, tags) -> dict:
         props = {}
         for tag in tags:
-            props[tag.key] = self.vt[tag.type](tag.value)
+            props[tag.key] = self.type_deserializers[tag.type](tag.value)
         return props
+
+    def serialize_tags(self, tags) -> List[Tag]:
+        serialized = []
+        for k, v in tags.items():
+            val, typ = self.type_serializers[type(v)](v)
+            serialized.append(Tag(key=k, value=val, type=typ))
+        return serialized
 
     def read(self, size: int):
         """Reads the specified number of bytes and checks if EOF has occured"""
@@ -52,19 +71,29 @@ class File(object):
             raise EOFError
         return buf
 
-    def read_int(self, size: int):
+    def read_int(self, size: int) -> int:
         return int.from_bytes(self.read(size), BYTEORDER)
+
+    def write(self, buf: bytes):
+        self.r.write(buf)
+
+    def write_int(self, i: int, size: int):
+        self.write(i.to_bytes(size, BYTEORDER))
 
     def read_header(self):
         cookie = self.r.read(4)
-        if cookie != b'SPAT':
+        if cookie != COOKIE:
             raise ValueError('Invalid header')
         version = self.read_int(4)
         if version != 0:
             raise ValueError('The library only supports Spaten version 0')
         return version
 
-    def read_block(self):
+    def write_header(self):
+        self.write(COOKIE)
+        self.write_int(0, 4)
+
+    def read_block(self) -> List[Feature]:
         body_len = self.read_int(4)
         flags = self.read_int(2)
         compression = self.read_int(1)
@@ -88,8 +117,23 @@ class File(object):
             ))
         return features
 
+    def write_block(self, features: List[Feature]):
+        block = Body()
+        for feat in features:
+            block.feature.append(SFeature(
+                geom=dumps(feat.geom),
+                tags=self.serialize_tags(feat.properties)
+            ))
+        bodybuf = block.SerializeToString()
+
+        self.write_int(len(bodybuf), 4)  # body size
+        self.write_int(0, 2)  # flags
+        self.write_int(0, 1)  # compression
+        self.write_int(0, 1)  # message type
+        self.write(bodybuf)
+
     def __iter__(self):
-        self._rd_buf = []  # type: [Feature]
+        self._rd_buf = []  # type: List[Feature]
         return self
 
     def __next__(self) -> Feature:
