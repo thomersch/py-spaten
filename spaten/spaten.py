@@ -45,7 +45,7 @@ class File(object):
             self._close = lambda: file
 
         if not readonly:
-            self._wr_buf = []
+            self._wr_buf = []  # type: List[Feature]
 
     def __enter__(self):
         self.r = self.open()

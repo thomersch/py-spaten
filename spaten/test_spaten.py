@@ -49,3 +49,12 @@ def test_append():
     with NamedTemporaryFile() as tmp:
         with File(tmp) as spat:
             spat.append(Feature(Point(10, 10), {}))
+
+
+def test_flush_block():
+    with NamedTemporaryFile() as tmp:
+        with File(tmp) as f:
+            for n in range(File.blocksize):
+                f.append(Feature(Point(0, 0), {}))
+
+            assert f._wr_buf == []
