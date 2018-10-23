@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='spaten',
-      version='0.1',
+      version='0.2',
       description='Spaten File Format Library',
       author='Thomas Skowron',
       author_email='th@skowron.eu',
