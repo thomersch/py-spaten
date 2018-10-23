@@ -1,6 +1,7 @@
 from tempfile import NamedTemporaryFile
 
 import pytest
+from shapely.geometry import Point
 
 from spaten import Feature, File
 
@@ -12,7 +13,6 @@ def test_parse():
 
     with File('spaten/testfiles/two_blocks.spaten') as f:
         for feature in f:
-            print(feature)
             assert isinstance(feature, Feature)
 
 
@@ -44,5 +44,8 @@ def test_write_file_stream():
         tmp.seek(0, 0)
         assert tmp.read(4) == b'SPAT'
 
-# def test_write_block():
-#     f = File()
+
+def test_append():
+    with NamedTemporaryFile() as tmp:
+        with File(tmp) as spat:
+            spat.append(Feature(Point(10, 10), {}))

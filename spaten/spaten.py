@@ -1,9 +1,9 @@
 import struct
-from typing import List
+from typing import Iterable, List
 
 from shapely.wkb import dumps, loads
 
-from .fileformat_pb2 import Body, Feature as SFeature, Tag
+from .fileformat_pb2 import Body, Tag
 
 
 BYTEORDER = 'little'
@@ -32,16 +32,20 @@ class File(object):
         int: lambda v: (v.to_bytes(8, BYTEORDER), Tag.INT),
         float: lambda v: (struct.pack('d', v), Tag.DOUBLE)
     }
+    blocksize = 100000
 
     def __init__(self, file, readonly=False):
         """Initialize a Spaten stream. If file is a str, it will be treated as a file
         path, otherwise it will be handled as a stream."""
         if isinstance(file, str):
             self.open = lambda: open(file, 'rb' if readonly else 'r+b')
-            self.close = lambda: self.r.close()
+            self._close = lambda: self.r.close()
         else:
             self.open = lambda: file  # assume this is already a stream: noop
-            self.close = lambda: file
+            self._close = lambda: file
+
+        if not readonly:
+            self._wr_buf = []
 
     def __enter__(self):
         self.r = self.open()
@@ -56,6 +60,17 @@ class File(object):
 
     def __exit__(self, *args, **kwargs):
         self.close()
+
+    def flush(self):
+        if not self._wr_buf:
+            # if its a readonly stream or there is nothing to be written
+            return
+        self.write_block(self._wr_buf)
+        self._wr_buf = []
+
+    def close(self):
+        self.flush()
+        self._close()
 
     def parse_tags(self, tags) -> dict:
         props = {}
@@ -123,13 +138,10 @@ class File(object):
             ))
         return features
 
-    def write_block(self, features: List[Feature]):
+    def write_block(self, features: Iterable[Feature]):
         block = Body()
         for feat in features:
-            block.feature.append(SFeature(
-                geom=dumps(feat.geom),
-                tags=self.serialize_tags(feat.properties)
-            ))
+            block.feature.add(geom=dumps(feat.geometry), tags=self.serialize_tags(feat.properties))
         bodybuf = block.SerializeToString()
 
         self.write_int(len(bodybuf), 4)  # body size
@@ -149,3 +161,8 @@ class File(object):
             return self._rd_buf.pop(0)
         except EOFError:
             raise StopIteration
+
+    def append(self, feature: Feature):
+        self._wr_buf.append(feature)
+        if len(self._wr_buf) >= self.blocksize:
+            self.flush()
