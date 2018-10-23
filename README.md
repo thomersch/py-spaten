@@ -12,17 +12,21 @@ Compatible with Python 3.5, 3.6, 3.7 and PyPy3.
 
 Reading Files:
 
-	from spaten import File
+```python
+from spaten import File
 
-	with File('your_file.spaten', readonly=True) as sf:
-		for feature in sf:
-			# Do something with feature
-			print(feature)
+with File('your_file.spaten', readonly=True) as sf:
+    for feature in sf:
+        # Do something with feature
+        print(feature)
+```
 
 Writing Files:
-	
-	from shapely.geometry import Point
-	from spaten import Feature, File
 
-	with File('out.spaten') as sf:
-		sf.append(Feature(Point(6.9, 50.9), {"class": "shop", "height": 12}))
+```python
+from shapely.geometry import Point
+from spaten import Feature, File
+
+with File('out.spaten') as sf:
+    sf.append(Feature(Point(6.9, 50.9), {"class": "shop", "height": 12}))
+```
