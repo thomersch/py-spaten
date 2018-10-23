@@ -33,23 +33,29 @@ class File(object):
         float: lambda v: (struct.pack('d', v), Tag.DOUBLE)
     }
 
-    def __init__(self, f):
-        """Initialize a Spaten stream. If f is a str, it will be treated as a file
+    def __init__(self, file, readonly=False):
+        """Initialize a Spaten stream. If file is a str, it will be treated as a file
         path, otherwise it will be handled as a stream."""
-        self.f = f
+        if isinstance(file, str):
+            self.open = lambda: open(file, 'rb' if readonly else 'r+b')
+            self.close = lambda: self.r.close()
+        else:
+            self.open = lambda: file  # assume this is already a stream: noop
+            self.close = lambda: file
 
     def __enter__(self):
-        if isinstance(self.f, str):
-            self.r = open(self.f, 'rb')
-        self.read_header()
+        self.r = self.open()
+        try:
+            self.read_header()
+        except EOFError as eof:
+            try:
+                self.write_header()
+            except IOError:
+                raise eof
         return self
 
     def __exit__(self, *args, **kwargs):
         self.close()
-
-    def close(self):
-        if hasattr(self.r, 'close'):
-            self.r.close()
 
     def parse_tags(self, tags) -> dict:
         props = {}
@@ -81,7 +87,7 @@ class File(object):
         self.write(i.to_bytes(size, BYTEORDER))
 
     def read_header(self):
-        cookie = self.r.read(4)
+        cookie = self.read(4)
         if cookie != COOKIE:
             raise ValueError('Invalid header')
         version = self.read_int(4)
