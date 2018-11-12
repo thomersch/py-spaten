@@ -66,7 +66,7 @@ class File(object):
         self.close()
 
     def flush(self):
-        if not self._wr_buf:
+        if not hasattr(self, '_wr_buf') or not self._wr_buf:
             # if its a readonly stream or there is nothing to be written
             return
         self.write_block(self._wr_buf)
