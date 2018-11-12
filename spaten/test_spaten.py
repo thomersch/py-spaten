@@ -1,4 +1,5 @@
-from tempfile import NamedTemporaryFile
+from os.path import join
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
 from shapely.geometry import Point
@@ -17,10 +18,11 @@ def test_parse():
 
 
 def test_tag_serializer():
-    f = File('nop.spaten')
-    r = f.serialize_tags({'banana': 1})
-    assert r[0].key == 'banana'
-    assert r[0].type == 1
+    with NamedTemporaryFile() as tmp:
+        f = File(tmp.name)
+        r = f.serialize_tags({'banana': 1})
+        assert r[0].key == 'banana'
+        assert r[0].type == 1
 
 
 def test_empty():
@@ -43,6 +45,12 @@ def test_write_file_stream():
             pass
         tmp.seek(0, 0)
         assert tmp.read(4) == b'SPAT'
+
+
+def test_new_file_path():
+    with TemporaryDirectory() as td:
+        with File(join(td, 'foo.spaten')) as spat:
+            spat.append(Feature(Point(10, 10), {}))
 
 
 def test_append():

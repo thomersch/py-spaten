@@ -1,4 +1,5 @@
 import struct
+from pathlib import Path
 from typing import Iterable, List
 
 from shapely.wkb import dumps, loads
@@ -38,7 +39,10 @@ class File(object):
         """Initialize a Spaten stream. If file is a str, it will be treated as a file
         path, otherwise it will be handled as a stream."""
         if isinstance(file, str):
-            self.open = lambda: open(file, 'rb' if readonly else 'r+b')
+            path = Path(file)
+            if not readonly and not path.exists():
+                path.touch()
+            self.open = lambda: open(path, 'rb' if readonly else 'r+b')
             self._close = lambda: self.r.close()
         else:
             self.open = lambda: file  # assume this is already a stream: noop
