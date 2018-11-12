@@ -42,7 +42,7 @@ class File(object):
             path = Path(file)
             if not readonly and not path.exists():
                 path.touch()
-            self.open = lambda: open(path, 'rb' if readonly else 'r+b')
+            self.open = lambda: open(str(path), 'rb' if readonly else 'r+b')
             self._close = lambda: self.r.close()
         else:
             self.open = lambda: file  # assume this is already a stream: noop
