@@ -66,3 +66,8 @@ def test_flush_block():
                 f.append(Feature(Point(0, 0), {}))
 
             assert f._wr_buf == []
+
+
+def test_direct_iteration():
+    for feature in File('spaten/testfiles/polygon.spaten'):
+        assert isinstance(feature, Feature)

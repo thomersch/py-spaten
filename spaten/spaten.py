@@ -156,6 +156,11 @@ class File(object):
 
     def __iter__(self):
         self._rd_buf = []  # type: List[Feature]
+        if not hasattr(self, 'r'):
+            # The file hasn't been opened before, so let's prepare the reader.
+            # _auto_open is used in order to close the file automatically later with a context manager.
+            self.__enter__()
+            self._auto_open = True
         return self
 
     def __next__(self) -> Feature:
@@ -164,6 +169,8 @@ class File(object):
                 self._rd_buf = self.read_block()
             return self._rd_buf.pop(0)
         except EOFError:
+            if hasattr(self, '_auto_open') and self._auto_open:
+                self.__exit__()
             raise StopIteration
 
     def append(self, feature: Feature):
