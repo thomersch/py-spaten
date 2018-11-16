@@ -40,3 +40,13 @@ with File('in_and_out.spaten') as sf:
         if some_condition(feature):
             sf.append(apply_transformation(feature))
 ```
+
+It is also possible to read or write from stdin/to stdout, but please note that [python opens stdin and stdout in text mode](https://docs.python.org/3/library/sys.html?highlight=sys#sys.stdin) by default, so you need to use `sys.stdin.buffer` and `sys.stdout.buffer`:
+
+```python
+import sys
+from spaten import File
+
+for feat in File(sys.stdin.buffer):
+    print(feat)
+```
