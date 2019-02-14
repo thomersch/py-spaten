@@ -1,4 +1,5 @@
 import struct
+from io import UnsupportedOperation
 from pathlib import Path
 from typing import Iterable, List
 
