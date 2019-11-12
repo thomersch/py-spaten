@@ -76,7 +76,8 @@ def test_direct_iteration():
 def test_inmemory_write():
     buf = BytesIO()
     with File(buf) as sp:
-        sp.append(Feature(Point(10, 10), {}))
+        for _ in range(1000):
+            sp.append(Feature(Point(10, 10), {}))
 
 
 def test_write_throughput(benchmark):
