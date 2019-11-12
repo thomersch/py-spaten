@@ -1,9 +1,9 @@
+from io import BytesIO
 from os.path import join
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import pytest
 from shapely.geometry import Point
-
 from spaten import Feature, File
 
 
@@ -71,3 +71,13 @@ def test_flush_block():
 def test_direct_iteration():
     for feature in File('spaten/testfiles/polygon.spaten'):
         assert isinstance(feature, Feature)
+
+
+def test_inmemory_write():
+    buf = BytesIO()
+    with File(buf) as sp:
+        sp.append(Feature(Point(10, 10), {}))
+
+
+def test_write_throughput(benchmark):
+    benchmark(test_inmemory_write)

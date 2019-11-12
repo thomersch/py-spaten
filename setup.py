@@ -10,7 +10,7 @@ setup(name='spaten',
       url='https://github.com/thomersch/py-spaten',
       packages=['spaten'],
       install_requires=['Shapely', 'protobuf>=3.0.0'],
-      test_requires=['pytest'],
+      test_requires=['pytest', 'pytest-benchmark'],
       classifiers=[
           "Programming Language :: Python :: 3",
           "License :: OSI Approved :: Apache Software License",
